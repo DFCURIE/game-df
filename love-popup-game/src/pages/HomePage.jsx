@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Heart, RotateCcw, Sparkles, Stars } from "lucide-react";
 import ChoiceButton from "../components/ChoiceButton";
@@ -11,6 +11,12 @@ export default function HomePage() {
   const [breathingIndex, setBreathingIndex] = useState(0);
   const [breathingDone, setBreathingDone] = useState(false);
   const [playfulMoved, setPlayfulMoved] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [pulseGlow, setPulseGlow] = useState(false);
+
+  const audioContextRef = useRef(null);
+  const ambientGainRef = useRef(null);
+  const ambientOscillatorsRef = useRef([]);
 
   const scene = scenes[current];
   const currentBreathing =
@@ -48,10 +54,181 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [current, breathingIndex, breathingDone, currentBreathing.duration]);
 
+  const playTone = (type = "soft") => {
+    if (!audioEnabled) return;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioCtx();
+      }
+
+      const ctx = audioContextRef.current;
+
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === "success") {
+        osc.frequency.setValueAtTime(520, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(
+          760,
+          ctx.currentTime + 0.18
+        );
+        osc.type = "sine";
+      } else if (type === "playful") {
+        osc.frequency.setValueAtTime(420, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(
+          560,
+          ctx.currentTime + 0.12
+        );
+        osc.type = "triangle";
+      } else {
+        osc.frequency.setValueAtTime(340, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(
+          440,
+          ctx.currentTime + 0.16
+        );
+        osc.type = "triangle";
+      }
+
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.03, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (error) {
+      console.error("Audio error:", error);
+    }
+  };
+
+  const startAmbientMusic = async () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioCtx();
+      }
+
+      const ctx = audioContextRef.current;
+
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+
+      if (ambientOscillatorsRef.current.length > 0) return;
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      masterGain.gain.exponentialRampToValueAtTime(
+        0.018,
+        ctx.currentTime + 2.5
+      );
+      masterGain.connect(ctx.destination);
+      ambientGainRef.current = masterGain;
+
+      const createLayer = (frequency, type, detune = 0) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+        osc.detune.setValueAtTime(detune, ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 2);
+        gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 6);
+
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start();
+
+        return { osc, gain };
+      };
+
+      const layer1 = createLayer(196, "sine", -4);
+      const layer2 = createLayer(293.66, "triangle", 3);
+      const layer3 = createLayer(392, "sine", -2);
+
+      ambientOscillatorsRef.current = [layer1, layer2, layer3];
+    } catch (error) {
+      console.error("Failed to start ambient music:", error);
+    }
+  };
+
+  const stopAmbientMusic = () => {
+    try {
+      const ctx = audioContextRef.current;
+      const masterGain = ambientGainRef.current;
+
+      if (ctx && masterGain) {
+        masterGain.gain.cancelScheduledValues(ctx.currentTime);
+        masterGain.gain.setValueAtTime(
+          masterGain.gain.value || 0.01,
+          ctx.currentTime
+        );
+        masterGain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          ctx.currentTime + 1.2
+        );
+      }
+
+      ambientOscillatorsRef.current.forEach(({ osc }) => {
+        try {
+          osc.stop((audioContextRef.current?.currentTime || 0) + 1.3);
+        } catch {
+          return;
+        }
+      });
+
+      ambientOscillatorsRef.current = [];
+      ambientGainRef.current = null;
+    } catch (error) {
+      console.error("Failed to stop ambient music:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (audioEnabled) {
+      startAmbientMusic();
+    } else {
+      stopAmbientMusic();
+    }
+
+    return () => {
+      stopAmbientMusic();
+    };
+  }, [audioEnabled]);
+
+  useEffect(() => {
+    return () => {
+      stopAmbientMusic();
+    };
+  }, []);
+
   const handleChoice = (choice) => {
     if (choice.playful && !playfulMoved) {
+      playTone("playful");
       setPlayfulMoved(true);
       return;
+    }
+
+    if (choice.next === "yes") {
+      playTone("success");
+      setPulseGlow(true);
+      setTimeout(() => setPulseGlow(false), 900);
+    } else {
+      playTone("soft");
     }
 
     setCurrent(choice.next);
@@ -61,6 +238,7 @@ export default function HomePage() {
       setBreathingIndex(0);
       setBreathingDone(false);
       setPlayfulMoved(false);
+      setPulseGlow(false);
       return;
     }
 
@@ -88,6 +266,7 @@ export default function HomePage() {
     setBreathingIndex(0);
     setBreathingDone(false);
     setPlayfulMoved(false);
+    setPulseGlow(false);
   };
 
   return (
@@ -116,24 +295,39 @@ export default function HomePage() {
                 <Stars className="h-5 w-5" />
               </div>
               <span className="text-sm uppercase tracking-[0.3em] text-white/55">
-                Paw's Game
+                paw’s game
               </span>
             </div>
 
             <div className="mt-9 max-w-xl">
               <h1 className="text-5xl font-semibold leading-[1.03] tracking-tight text-white xl:text-[3.8rem]">
-                Bukan game biasa.
+                Paw’s Game.
                 <br />
-                Gakerasa ya kita sudah lumayan lama kenal dekat,
+                Bukan cuma soal jawaban,
                 <span className="bg-gradient-to-r from-rose-100 via-fuchsia-200 to-cyan-100 bg-clip-text text-transparent">
-                  {" "}“aku mau kita punya arah.”
+                  {" "}tapi dijawab dan difikirkan pelan pelan ya
                 </span>
               </h1>
               <p className="mt-6 max-w-lg text-base leading-8 text-white/68 xl:text-[1.04rem]">
-                 Ini bukan sesuatu yang harus kamu jawab cepat.
-                Cuma ruang kecil... buat kita jujur,
-                tanpa takut dinilai, tanpa harus sempurna.
+                Ini bukan sesuatu yang harus kamu jawab cepat. Cuma ruang kecil
+                buat kita jujur, tanpa takut dinilai, tanpa harus sempurna.
               </p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-3 gap-4">
+              {[
+                ["Calm start", "Mulai dari rasa tenang, bukan tekanan."],
+                ["Soft motion", "Halus, hangat, dan tetap terasa elegan."],
+                ["For paw", "Dibuat untuk momen yang ingin terasa spesial."],
+              ].map(([title, desc]) => (
+                <div
+                  key={title}
+                  className="rounded-[28px] border border-white/10 bg-black/10 p-4 backdrop-blur-xl"
+                >
+                  <p className="text-sm font-medium text-white">{title}</p>
+                  <p className="mt-2 text-sm leading-6 text-white/55">{desc}</p>
+                </div>
+              ))}
             </div>
           </motion.div>
 
@@ -142,9 +336,19 @@ export default function HomePage() {
               initial={{ opacity: 0, scale: 0.965, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="relative w-full max-w-xl overflow-hidden rounded-[34px] border border-white/15 bg-white/[0.075] shadow-[0_40px_120px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
+              className={`relative w-full max-w-xl overflow-hidden rounded-[34px] border border-white/15 bg-white/[0.075] shadow-[0_40px_120px_rgba(0,0,0,0.35)] backdrop-blur-2xl transition-all duration-700 ${
+                pulseGlow
+                  ? "ring-1 ring-white/30 shadow-[0_0_90px_rgba(255,255,255,0.16)]"
+                  : ""
+              }`}
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_38%)] opacity-60" />
+
+              <motion.div
+                className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_60%)]"
+                animate={{ opacity: [0.35, 0.6, 0.35] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              />
 
               <div className="relative border-b border-white/10 px-5 py-4 md:px-7 md:py-5">
                 <div className="flex items-center justify-between gap-4">
@@ -154,21 +358,34 @@ export default function HomePage() {
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-[0.32em] text-white/45">
-                        Create By DF
+                        paw’s game
                       </p>
                       <p className="mt-1 text-sm text-white/72">
-                        for someone special
+                        just for one special heart
                       </p>
                     </div>
                   </div>
 
-                  <button
-                    onClick={handleRestart}
-                    className="rounded-full border border-white/10 bg-white/5 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
-                    aria-label="Restart"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setAudioEnabled((prev) => !prev)}
+                      className={`rounded-full border px-3 py-2 text-[10px] uppercase tracking-[0.22em] transition md:text-xs ${
+                        audioEnabled
+                          ? "border-white/25 bg-white/15 text-white"
+                          : "border-white/10 bg-white/5 text-white/55 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      {audioEnabled ? "ambient on" : "ambient off"}
+                    </button>
+
+                    <button
+                      onClick={handleRestart}
+                      className="rounded-full border border-white/10 bg-white/5 p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+                      aria-label="Restart"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-5">
@@ -212,7 +429,9 @@ export default function HomePage() {
                             opacity: breathingDone ? 1 : [0.78, 1, 0.88],
                           }}
                           transition={{
-                            duration: breathingDone ? 0.8 : currentBreathing.duration,
+                            duration: breathingDone
+                              ? 0.8
+                              : currentBreathing.duration,
                             ease: "easeInOut",
                           }}
                           className="relative flex h-48 w-48 items-center justify-center rounded-full border border-white/20 bg-white/10 backdrop-blur-xl md:h-56 md:w-56"
@@ -253,6 +472,7 @@ export default function HomePage() {
                         return (
                           <motion.div
                             key={choice.label}
+                            whileHover={{ scale: 1.005 }}
                             animate={
                               isPlayfulGhost && playfulMoved
                                 ? {
