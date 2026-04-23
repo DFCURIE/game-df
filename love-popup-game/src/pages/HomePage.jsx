@@ -13,7 +13,7 @@ export default function HomePage() {
   const [playfulMoved, setPlayfulMoved] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [pulseGlow, setPulseGlow] = useState(false);
-
+  const [showHearts, setShowHearts] = useState(false);
   const audioContextRef = useRef(null);
   const ambientGainRef = useRef(null);
   const ambientOscillatorsRef = useRef([]);
@@ -224,10 +224,13 @@ export default function HomePage() {
     }
 
     if (choice.next === "yes") {
-      playTone("success");
-      setPulseGlow(true);
-      setTimeout(() => setPulseGlow(false), 900);
-    } else {
+  setPulseGlow(true);
+  setShowHearts(true);
+
+  setTimeout(() => setPulseGlow(false), 800);
+  setTimeout(() => setShowHearts(false), 2200);
+    }
+    else {
       playTone("soft");
     }
 
@@ -244,6 +247,15 @@ export default function HomePage() {
 
     setHistory((prev) => [...prev, choice.next]);
   };
+
+  const handleShareWA = () => {
+  const text = encodeURIComponent(
+    "aku jawab ini dari paw’s game 🫶\n\naku mau kita jalan lebih serius..."
+  );
+
+  const url = `https://wa.me/?text=${text}`;
+  window.open(url, "_blank");
+};
 
   const handleBack = () => {
     if (history.length <= 1) return;
@@ -267,6 +279,7 @@ export default function HomePage() {
     setBreathingDone(false);
     setPlayfulMoved(false);
     setPulseGlow(false);
+    setShowHearts(false);
   };
 
   return (
@@ -305,29 +318,12 @@ export default function HomePage() {
                 <br />
                 Bukan cuma soal jawaban,
                 <span className="bg-gradient-to-r from-rose-100 via-fuchsia-200 to-cyan-100 bg-clip-text text-transparent">
-                  {" "}tapi dijawab dan difikirkan pelan pelan ya
+                  {" "}tapi dijawab jujur...
                 </span>
               </h1>
               <p className="mt-6 max-w-lg text-base leading-8 text-white/68 xl:text-[1.04rem]">
-                Ini bukan sesuatu yang harus kamu jawab cepat. Cuma ruang kecil
-                buat kita jujur, tanpa takut dinilai, tanpa harus sempurna.
+                Sebelum mulai klik "refresh" dan tarik nafas dulu yaa hehe
               </p>
-            </div>
-
-            <div className="mt-10 grid grid-cols-3 gap-4">
-              {[
-                ["Calm start", "Mulai dari rasa tenang, bukan tekanan."],
-                ["Soft motion", "Halus, hangat, dan tetap terasa elegan."],
-                ["For paw", "Dibuat untuk momen yang ingin terasa spesial."],
-              ].map(([title, desc]) => (
-                <div
-                  key={title}
-                  className="rounded-[28px] border border-white/10 bg-black/10 p-4 backdrop-blur-xl"
-                >
-                  <p className="text-sm font-medium text-white">{title}</p>
-                  <p className="mt-2 text-sm leading-6 text-white/55">{desc}</p>
-                </div>
-              ))}
             </div>
           </motion.div>
 
@@ -343,7 +339,40 @@ export default function HomePage() {
               }`}
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.12),transparent_38%)] opacity-60" />
-
+                {showHearts && (
+              <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                {[...Array(16)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{
+                      opacity: 0,
+                      y: 40,
+                      x: 0,
+                      scale: 0.6,
+                      rotate: 0,
+                    }}
+                    animate={{
+                      opacity: [0, 1, 1, 0],
+                      y: -260 - i * 8,
+                      x: (i % 2 === 0 ? -1 : 1) * (20 + (i % 5) * 14),
+                      scale: [0.6, 1, 0.9],
+                      rotate: i % 2 === 0 ? -18 : 18,
+                    }}
+                    transition={{
+                      duration: 1.8 + (i % 4) * 0.18,
+                      ease: "easeOut",
+                      delay: i * 0.04,
+                    }}
+                    className="absolute bottom-10 left-1/2 text-white/80"
+                  >
+                    <Heart
+                      className="h-4 w-4 md:h-5 md:w-5"
+                      fill="currentColor"
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
               <motion.div
                 className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16),transparent_60%)]"
                 animate={{ opacity: [0.35, 0.6, 0.35] }}
@@ -500,6 +529,14 @@ export default function HomePage() {
                           </motion.div>
                         );
                       })}
+                      {scene.final && (
+                            <button
+                              onClick={handleShareWA}
+                              className="mt-6 w-full rounded-xl bg-white text-black py-3 text-sm font-medium hover:bg-white/90 transition"
+                            >
+                              Kirim ke aku
+                            </button>
+                          )}
                     </div>
                   </motion.div>
                 </AnimatePresence>

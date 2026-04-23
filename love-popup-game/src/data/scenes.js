@@ -9,7 +9,6 @@ export const scenes = {
     id: "breathing",
     eyebrow: "slow down",
     title: "Paw’s Game dimulai dari sini...",
-    body: "Tarik napas pelan ya. Kamu nggak perlu jadi siap, cukup jadi tenang dulu aja.",
     choices: [{ label: "Aku siap", next: "intro", tone: "primary" }],
   },
   intro: {
