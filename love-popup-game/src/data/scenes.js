@@ -15,7 +15,7 @@ export const scenes = {
     id: "intro",
     eyebrow: "for you",
     title: "Aku lagi mikirin kita... tapi dengan cara yang ringan",
-    body: "Bukan buat bikin kamu mikir keras. Aku cuma pengen ngobrol dengan cara yang lebih jujur, tapi tetap nyaman.",
+    body: "Bukan buat bikin kamu pusing. Aku cuma pengen ngobrol dengan cara yang lebih jujur, tapi tetap nyaman.",
     choices: [
       { label: "Tentang apa?", next: "playful" },
       { label: "Serius amat ", next: "playful" },
