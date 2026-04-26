@@ -310,7 +310,7 @@ export default function HomePage() {
 
     const baseUrl =
       window.location.hostname === "localhost"
-        ? "https://LINK-VERCEL-KAMU"
+        ? "https://game-df.vercel.app/"
         : window.location.origin;
 
     const resultUrl = `${baseUrl}${window.location.pathname}?answer=${answer}&msg=${encodeURIComponent(
