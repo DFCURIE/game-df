@@ -4,6 +4,7 @@ import { Heart, RotateCcw, Sparkles, Stars } from "lucide-react";
 import ChoiceButton from "../components/ChoiceButton";
 import FloatingDecor from "../components/FloatingDecor";
 import { breathingSteps, scenes } from "../data/scenes";
+import { supabase } from "../lib/supabaseClient";
 
 export default function HomePage() {
   const [current, setCurrent] = useState("breathing");
@@ -299,31 +300,41 @@ export default function HomePage() {
     setHistory((prev) => [...prev, choice.next]);
   };
 
-  const handleShareWA = () => {
-    const answerMap = {
-      yes: "yes",
-      slow: "slow",
-      time: "time",
-    };
-
-    const answer = answerMap[current] || "unknown";
-
-    const baseUrl =
-      window.location.hostname === "localhost"
-        ? "https://game-df.vercel.app/"
-        : window.location.origin;
-
-    const resultUrl = `${baseUrl}${window.location.pathname}?answer=${answer}&msg=${encodeURIComponent(
-      reflection
-    )}`;
-
-    const text = encodeURIComponent(
-      `paw… aku jawab ini dari game kamu 🫶\n\nini jawaban aku:\n${resultUrl}`
-    );
-
-    const url = `https://wa.me/?text=${text}`;
-    window.open(url, "_blank");
+const handleShareWA = async () => {
+  const answerMap = {
+    yes: "yes",
+    slow: "slow",
+    time: "time",
   };
+
+  const answer = answerMap[current] || "unknown";
+
+  const baseUrl =
+    window.location.hostname === "localhost"
+      ? "https://game-df.vercel.app"
+      : window.location.origin;
+
+  const resultUrl = `${baseUrl}${window.location.pathname}?answer=${answer}&msg=${encodeURIComponent(
+    reflection
+  )}`;
+
+  const { error } = await supabase.from("paw_responses").insert({
+    answer,
+    reflection,
+    page_url: resultUrl,
+    user_agent: navigator.userAgent,
+  });
+
+  if (error) {
+    console.error("Failed to save response:", error);
+  }
+
+  const text = encodeURIComponent(
+    `paw… aku jawab ini dari game kamu 🫶\n\nini jawaban aku:\n${resultUrl}`
+  );
+
+  window.open(`https://wa.me/?text=${text}`, "_blank");
+};
 
   const handleBack = () => {
     if (history.length <= 1) return;
