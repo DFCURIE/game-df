@@ -78,7 +78,6 @@ export const scenes = {
     body: "Kamu mau nggak kita mulai kasih arti ke ini semua? Nggak harus sempurna, cukup kita sama-sama milih untuk tetap ada.",
     choices: [
       { label: "Aku mau!", next: "yes", tone: "primary" },
-      { label: "Aku mau, tapi pelan ya", next: "slow", tone: "secondary" },
       { label: "Aku belum siap", next: "time", tone: "ghost" },
     ],
   },

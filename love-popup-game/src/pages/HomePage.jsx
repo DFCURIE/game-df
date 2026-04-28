@@ -54,13 +54,6 @@ export default function HomePage() {
       };
     }
 
-    if (resultAnswer === "slow") {
-      return {
-        title: "Dia memilih: Aku mau, tapi pelan ya",
-        body: "Ada ruang yang indah di sini. Bukan penolakan, tapi ajakan untuk berjalan dengan tenang dan tetap saling jaga.",
-      };
-    }
-
     if (resultAnswer === "time") {
       return {
         title: "Dia memilih: Aku belum siap",
