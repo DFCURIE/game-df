@@ -18,7 +18,7 @@ export default function HomePage() {
   const [resultMode, setResultMode] = useState(false);
   const [resultAnswer, setResultAnswer] = useState("");
   const [reflection, setReflection] = useState("");
-
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const audioContextRef = useRef(null);
   const ambientGainRef = useRef(null);
   const ambientOscillatorsRef = useRef([]);
@@ -266,6 +266,16 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+  if (isSubmitted) {
+    const timer = setTimeout(() => {
+      setIsSubmitted(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }
+}, [isSubmitted]);
+
   const handleChoice = (choice) => {
     if (choice.playful && !playfulMoved) {
       playTone("playful");
@@ -327,13 +337,12 @@ const handleShareWA = async () => {
 
   if (error) {
     console.error("Failed to save response:", error);
+    alert("Gagal mengirim 😢");
+    return;
   }
 
-  const text = encodeURIComponent(
-    `paw… aku jawab ini dari game kamu 🫶\n\nini jawaban aku:\n${resultUrl}`
-  );
-
-  window.open(`https://wa.me/?text=${text}`, "_blank");
+  // ✅ SUCCESS UI
+  setIsSubmitted(true);
 };
 
   const handleBack = () => {
@@ -367,6 +376,14 @@ const handleShareWA = async () => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#050816] text-white">
+        {/* ✅ NOTIF DI SINI */}
+    {isSubmitted && (
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+        <div className="rounded-xl bg-green-500 px-6 py-3 text-white shadow-lg">
+          💌 Jawaban kamu berhasil dikirim
+        </div>
+      </div>
+    )}
       <div
         className="absolute inset-0"
         style={{
